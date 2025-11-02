@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "client/package.json",
-      "use": "@vercel/static-build"
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     }
   ],
   "routes": [
@@ -11,5 +14,13 @@
       "src": "/(.*)",
       "dest": "/client/$1"
     }
-  ]
+  ],
+  "installCommand": "cd client && npm install --prefer-offline --no-audit",
+  "buildCommand": "cd client && npm run build:light",
+  "outputDirectory": "client/dist",
+  "functions": {
+    "client/package.json": {
+      "maxDuration": 30
+    }
+  }
 }
