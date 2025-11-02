@@ -22,11 +22,11 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// Serve static files from client dist (hanya jika folder exists)
-const clientDistPath = path.join(__dirname, '../client/dist');
-const fs = require('fs');
+// Serve static files from client dist in production
+if (process.env.NODE_ENV === 'production') {
+    const clientDistPath = path.join(__dirname, '../client/dist');
 
-if (fs.existsSync(clientDistPath)) {
+    // Serve static files
     app.use(express.static(clientDistPath));
 
     // Serve frontend for all other routes (SPA support)
@@ -34,27 +34,37 @@ if (fs.existsSync(clientDistPath)) {
         res.sendFile(path.join(clientDistPath, 'index.html'));
     });
 } else {
-    // Jika client dist belum dibuild, tampilkan info
-    app.get('*', (req, res) => {
+    // Development mode - just API
+    app.get('/', (req, res) => {
         res.json({
-            message: 'Backend API is running. Client frontend not built yet.',
+            message: 'YouTube Downloader API is running in development mode',
             endpoints: {
                 health: '/api/health',
                 videoInfo: '/api/download/info?url=YOUTUBE_URL',
-                downloadVideo: '/api/download/video?url=YOUTUBE_URL',
+                downloadVideo: '/api/download/video?url=YOUTUBE_URL&quality=720p',
                 downloadAudio: '/api/download/audio?url=YOUTUBE_URL'
             }
         });
     });
 }
 
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📱 Frontend: http://localhost:${PORT}`);
-    console.log(`🔗 API: http://localhost:${PORT}/api`);
-    console.log(`❤️  Health: http://localhost:${PORT}/api/health`);
+// Handle 404 for API routes
+app.use('/api/*', (req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'API endpoint not found'
+    });
 });
 
+const PORT = process.env.PORT || 3000;
+
+// Export for Vercel
 module.exports = app;
+
+// Only listen if not in Vercel environment
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(PORT, () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+        console.log(`🔗 API: http://localhost:${PORT}/api`);
+    });
+}

@@ -1,10 +1,10 @@
 import { createStore } from 'vuex';
 import axios from 'axios';
 
-// API base URL - sesuaikan dengan environment
-const API_BASE = process.env.NODE_ENV === 'production'
-    ? '/api'
-    : 'http://localhost:3000/api';
+// API base URL - otomatis detect environment
+const API_BASE = window.location.hostname === 'localhost'
+    ? 'http://localhost:3000/api'
+    : '/api';
 
 export default createStore({
     state: {
@@ -34,7 +34,6 @@ export default createStore({
             if (state.downloadHistory.length > 10) {
                 state.downloadHistory.pop();
             }
-            // Save to localStorage
             localStorage.setItem('downloadHistory', JSON.stringify(state.downloadHistory));
         }
     },
@@ -46,7 +45,8 @@ export default createStore({
 
             try {
                 const response = await axios.get(`${API_BASE}/download/info`, {
-                    params: { url }
+                    params: { url },
+                    timeout: 10000
                 });
 
                 if (response.data.success) {
@@ -77,12 +77,15 @@ export default createStore({
                         url,
                         quality: type === 'audio' ? 'highest' : quality,
                         filename
-                    }
+                    },
+                    timeout: 15000
                 });
 
+                // Jika ada redirect_url, buka di tab baru
                 if (response.data.redirect_url) {
-                    // Jika ada redirect URL, buka di tab baru
                     window.open(response.data.redirect_url, '_blank');
+                } else if (response.data.data?.download_url) {
+                    window.open(response.data.data.download_url, '_blank');
                 }
 
                 // Add to history
@@ -94,7 +97,7 @@ export default createStore({
                     filename: response.data.data?.filename || `${filename}.${type === 'audio' ? 'mp3' : 'mp4'}`,
                     timestamp: new Date().toISOString(),
                     status: 'completed',
-                    message: response.data.message || 'Download diproses'
+                    message: response.data.data?.message || 'Membuka service download...'
                 };
 
                 commit('ADD_TO_HISTORY', downloadInfo);
@@ -102,12 +105,11 @@ export default createStore({
                 // Show success message
                 if (typeof this._vm !== 'undefined' && this._vm.$notify) {
                     this._vm.$notify({
-                        title: 'Download Diproses!',
-                        message: response.data.message || 'Redirecting to download service...',
-                        type: 'success'
+                        title: 'Membuka Service Download',
+                        message: 'Service external dibuka di tab baru. Silakan ikuti instruksi di website tersebut.',
+                        type: 'success',
+                        duration: 5000
                     });
-                } else {
-                    alert('Download berhasil diproses!');
                 }
 
                 return downloadInfo;
@@ -118,12 +120,11 @@ export default createStore({
 
                 if (typeof this._vm !== 'undefined' && this._vm.$notify) {
                     this._vm.$notify({
-                        title: 'Download Gagal',
+                        title: 'Error',
                         message: errorMsg,
-                        type: 'error'
+                        type: 'error',
+                        duration: 5000
                     });
-                } else {
-                    alert('Download gagal: ' + errorMsg);
                 }
 
                 throw error;
